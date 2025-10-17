@@ -1,0 +1,14 @@
+{
+  "name": "Forecaster",
+  "description": "Predict the future, one cast at a time.",
+  "iconUrl": "https://example.com/icon.png",
+  "splashImageUrl": "https://example.com/splash.png",
+  "ogImageUrl": "https://example.com/og.png",
+  "homeUrl": "https://example.com",
+  "accountAssociation": {
+    "header": "<fip-11-signature-header-placeholder>",
+    "payload": "<fip-11-signed-payload-placeholder>",
+    "signature": "<fip-11-signature-placeholder>"
+  }
+}
+
