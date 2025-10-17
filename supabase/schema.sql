@@ -14,6 +14,6 @@ create table if not exists votes (
 create table if not exists polls (
   id text primary key,
   question text not null,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  expires_at timestamptz default (now() + interval '1 day')
 );
-

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getServiceSupabase, getTally } from '@/lib/supabaseServer'
+import { getPollById, isPollExpired } from '@/lib/polls'
 
 export const runtime = 'nodejs'
 
@@ -12,13 +13,27 @@ type VoteBody = {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const pollId = searchParams.get('poll_id')
+  const fidParam = searchParams.get('fid')
   if (!pollId) {
     return Response.json({ error: 'missing_poll_id' }, { status: 400 })
   }
 
   try {
     const tally = await getTally(pollId)
-    return Response.json(tally)
+    let hasVoted = false
+    if (fidParam) {
+      const supabase = getServiceSupabase()
+      const fid = Number(fidParam)
+      if (!Number.isNaN(fid)) {
+        const { count, error } = await supabase
+          .from('votes')
+          .select('*', { count: 'exact', head: true })
+          .eq('poll_id', pollId)
+          .eq('fid', fid)
+        if (!error) hasVoted = (count ?? 0) > 0
+      }
+    }
+    return Response.json({ ...tally, hasVoted })
   } catch (e: any) {
     return Response.json({ error: 'tally_failed', details: e?.message }, { status: 500 })
   }
@@ -39,6 +54,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'invalid_payload' }, { status: 400 })
   }
 
+  // Check poll expiry
+  const poll = await getPollById(poll_id)
+  if (!poll) return Response.json({ error: 'poll_not_found' }, { status: 404 })
+  if (isPollExpired(poll)) return Response.json({ error: 'poll_expired' }, { status: 403 })
+
   // Attempt insert; rely on unique (poll_id, fid) to reject duplicates
   const { error } = await supabase.from('votes').insert({ poll_id, fid, choice })
 
@@ -57,4 +77,3 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'tally_failed', details: e?.message }, { status: 500 })
   }
 }
-

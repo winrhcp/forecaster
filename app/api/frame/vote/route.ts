@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { verifyWithNeynar } from '@/lib/neynar'
 import { getServiceSupabase, getTally } from '@/lib/supabaseServer'
+import { getPollById, isPollExpired } from '@/lib/polls'
 
 export const runtime = 'nodejs'
 
@@ -29,6 +30,11 @@ export async function POST(req: NextRequest) {
   if (!pollId) {
     return Response.json({ error: 'missing_poll_id' }, { status: 400 })
   }
+
+  // Check poll expiry first
+  const poll = await getPollById(pollId)
+  if (!poll) return Response.json({ error: 'poll_not_found' }, { status: 404 })
+  if (isPollExpired(poll)) return Response.json({ error: 'poll_expired' }, { status: 403 })
 
   let body: FrameBody
   try {
@@ -70,4 +76,3 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: 'tally_failed', details: e?.message }, { status: 500 })
   }
 }
-

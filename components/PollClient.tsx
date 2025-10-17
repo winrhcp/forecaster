@@ -7,30 +7,44 @@ type Tally = {
   total: number
 }
 
-export function PollClient({ pollId, question }: { pollId: string; question: string }) {
+export function PollClient({ pollId, question, expiresAt }: { pollId: string; question: string; expiresAt: string }) {
   const [fid, setFid] = useState<number | ''>('')
   const [tally, setTally] = useState<Tally>({ openai: 0, anthropic: 0, total: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasVoted, setHasVoted] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  const expired = useMemo(() => {
+    const t = new Date(expiresAt).getTime()
+    return Number.isFinite(t) && now >= t
+  }, [expiresAt, now])
 
   const openaiPct = useMemo(() => (tally.total ? Math.round((tally.openai / tally.total) * 100) : 0), [tally])
   const anthropicPct = 100 - openaiPct
 
   const fetchTally = useCallback(async () => {
     try {
-      const res = await fetch(`/api/vote?poll_id=${encodeURIComponent(pollId)}`, { cache: 'no-store' })
-      const data = (await res.json()) as Tally | { error: string }
+      const fidQuery = fid && !Number.isNaN(Number(fid)) ? `&fid=${fid}` : ''
+      const res = await fetch(`/api/vote?poll_id=${encodeURIComponent(pollId)}${fidQuery}`, { cache: 'no-store' })
+      const data = (await res.json()) as (Tally & { hasVoted?: boolean }) | { error: string }
       if ('error' in data) return
-      setTally(data)
+      setTally({ openai: data.openai, anthropic: data.anthropic, total: data.total })
+      if (typeof data.hasVoted === 'boolean') setHasVoted(data.hasVoted)
     } catch {}
-  }, [pollId])
+  }, [pollId, fid])
 
   useEffect(() => {
     fetchTally()
     const id = setInterval(fetchTally, 2000)
     return () => clearInterval(id)
   }, [fetchTally])
+
+  // Tick the clock every 10s to update expiration UI
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10000)
+    return () => clearInterval(id)
+  }, [])
 
   const vote = async (choice: 'openai' | 'anthropic') => {
     setError(null)
@@ -85,14 +99,14 @@ export function PollClient({ pollId, question }: { pollId: string; question: str
 
       <div className="mb-5 flex gap-3">
         <button
-          disabled={loading || hasVoted}
+          disabled={loading || hasVoted || expired}
           onClick={() => vote('openai')}
           className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           OpenAI
         </button>
         <button
-          disabled={loading || hasVoted}
+          disabled={loading || hasVoted || expired}
           onClick={() => vote('anthropic')}
           className="flex-1 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -102,28 +116,33 @@ export function PollClient({ pollId, question }: { pollId: string; question: str
 
       {error && <div className="mb-3 text-sm text-red-400">{error}</div>}
 
+      {!expired && !hasVoted && (
+        <div className="text-sm text-neutral-400">Vote to see live results. Poll closes at {new Date(expiresAt).toLocaleString()}.</div>
+      )}
+
+      {(expired || hasVoted) && (
       <div className="space-y-3">
-        <div>
-          <div className="mb-1 flex justify-between text-sm">
-            <span>OpenAI</span>
-            <span>{openaiPct}% ({tally.openai})</span>
+          <div>
+            <div className="mb-1 flex justify-between text-sm">
+              <span>OpenAI</span>
+              <span>{openaiPct}% ({tally.openai})</span>
+            </div>
+            <div className="h-3 w-full rounded bg-neutral-800">
+              <div className="h-3 rounded bg-indigo-600" style={{ width: `${openaiPct}%` }} />
+            </div>
           </div>
-          <div className="h-3 w-full rounded bg-neutral-800">
-            <div className="h-3 rounded bg-indigo-600" style={{ width: `${openaiPct}%` }} />
+          <div>
+            <div className="mb-1 flex justify-between text-sm">
+              <span>Anthropic</span>
+              <span>{anthropicPct}% ({tally.anthropic})</span>
+            </div>
+            <div className="h-3 w-full rounded bg-neutral-800">
+              <div className="h-3 rounded bg-emerald-600" style={{ width: `${anthropicPct}%` }} />
+            </div>
           </div>
+          <div className="text-right text-xs text-neutral-400">Total votes: {tally.total}</div>
         </div>
-        <div>
-          <div className="mb-1 flex justify-between text-sm">
-            <span>Anthropic</span>
-            <span>{anthropicPct}% ({tally.anthropic})</span>
-          </div>
-          <div className="h-3 w-full rounded bg-neutral-800">
-            <div className="h-3 rounded bg-emerald-600" style={{ width: `${anthropicPct}%` }} />
-          </div>
-        </div>
-        <div className="text-right text-xs text-neutral-400">Total votes: {tally.total}</div>
-      </div>
+      )}
     </section>
   )
 }
-
