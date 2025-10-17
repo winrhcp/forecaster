@@ -29,12 +29,19 @@ Note: The service role key is used only on the server in `app/api/vote/route.ts`
   - 409 → `{ error: 'duplicate_vote' }`
 
 **UI**
-- `app/page.tsx` shows the poll:
-  - “Who will win the AI race in 2025?”
-  - Buttons: “OpenAI” and “Anthropic”
-  - Input for `fid` (simulating Frame signature resolution). After a successful vote or 409, buttons disable.
-  - Polls results every 2s and renders percentages and totals.
+- Multi-poll
+  - `app/page.tsx` lists available polls (from Supabase `polls` table if present, else `config/polls.json`).
+  - `app/p/[pollId]/page.tsx` shows the poll detail with two options (OpenAI, Anthropic).
+  - `components/PollClient.tsx` handles voting and live tally updates.
 
 **Notes**
 - In a real Frame, derive `fid` from the FIP-11 signed payload (see `accountAssociation` placeholders in the manifest).
+- Options are currently fixed to {openai, anthropic} across polls for simplicity.
+
+**Poll Sources**
+- Supabase table (preferred in production):
+  - Table: `polls (id text primary key, question text not null)`
+  - If the table exists and has rows, the app uses it.
+- Local JSON fallback:
+  - `config/polls.json` — edit to add more polls in development.
 

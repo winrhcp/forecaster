@@ -10,3 +10,10 @@ create table if not exists votes (
   unique (poll_id, fid)
 );
 
+-- Optional: multi-poll support
+create table if not exists polls (
+  id text primary key,
+  question text not null,
+  created_at timestamptz default now()
+);
+
