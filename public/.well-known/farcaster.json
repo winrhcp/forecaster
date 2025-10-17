@@ -1,10 +1,12 @@
 {
   "name": "Forecaster",
   "description": "Predict the future, one cast at a time.",
-  "iconUrl": "https://example.com/icon.png",
-  "splashImageUrl": "https://example.com/splash.png",
-  "ogImageUrl": "https://example.com/og.png",
-  "homeUrl": "https://example.com",
+  "tags": ["prediction", "vote", "frame"],
+  "primaryCategory": "social",
+  "iconUrl": "https://raw.githubusercontent.com/winrhcp/forecaster/refs/heads/master/assets/logo.png",
+  "splashImageUrl": "https://raw.githubusercontent.com/winrhcp/forecaster/refs/heads/master/assets/logo.png",
+  "ogImageUrl": "https://raw.githubusercontent.com/winrhcp/forecaster/refs/heads/master/assets/logo.png",
+  "homeUrl": "https://forecaster-farcaster.vercel.app",
   "accountAssociation": {
     "header": "<fip-11-signature-header-placeholder>",
     "payload": "<fip-11-signed-payload-placeholder>",
